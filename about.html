@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — PneumoScan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <span class="logo-icon">⬡</span>
+    <span class="logo-text">PneumoScan</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="/">Diagnose</a></li>
+    <li><a href="/about" class="active">About</a></li>
+    <li><span class="nav-badge">XAI Powered</span></li>
+  </ul>
+</nav>
+
+<div class="about-page">
+
+  <header class="about-hero">
+    <h1>How It Works</h1>
+    <p>A complete walkthrough of the architecture, dataset, and explainability layer.</p>
+  </header>
+
+  <div class="about-grid">
+
+    <div class="about-card ac-wide">
+      <div class="ac-num">01</div>
+      <h2>The Dataset</h2>
+      <p>
+        We train on the <strong>NIH Chest X-Ray14</strong> dataset — one of the largest publicly
+        available chest X-ray collections. It contains <strong>112,120</strong> frontal-view X-rays
+        from 30,805 unique patients, labelled with up to 14 thoracic pathology findings
+        using NLP-mined annotations from radiology reports.
+      </p>
+      <div class="ac-tags">
+        <span>112,120 images</span><span>30,805 patients</span>
+        <span>14 pathology labels</span><span>Multi-label classification</span>
+      </div>
+    </div>
+
+    <div class="about-card">
+      <div class="ac-num">02</div>
+      <h2>DenseNet-121 Backbone</h2>
+      <p>
+        The model is a <strong>DenseNet-121</strong> pre-trained on ImageNet, fine-tuned for
+        multi-label chest pathology classification — the same architecture used in the
+        seminal <em>CheXNet</em> paper (Rajpurkar et al., 2017).
+      </p>
+      <p>
+        Each dense block connects every layer to every other layer in a feed-forward
+        fashion, enabling strong gradient flow and feature reuse — critical for detecting
+        subtle radiology findings.
+      </p>
+    </div>
+
+    <div class="about-card">
+      <div class="ac-num">03</div>
+      <h2>Multi-Label Training</h2>
+      <p>
+        A patient can have multiple simultaneous conditions. We model this with
+        <strong>Binary Cross-Entropy with Logits Loss</strong> and class-frequency-aware
+        positive weights to handle severe label imbalance (e.g., Hernia appears in
+        &lt; 0.2% of images).
+      </p>
+      <p>
+        Performance is measured via <strong>mean AUC-ROC</strong> across all 14 classes,
+        consistent with clinical literature benchmarks.
+      </p>
+    </div>
+
+    <div class="about-card ac-wide ac-highlight">
+      <div class="ac-num">04</div>
+      <h2>Explainable AI — Grad-CAM</h2>
+      <p>
+        <strong>Gradient-weighted Class Activation Mapping (Grad-CAM)</strong> makes the
+        model interpretable. For each prediction, it:
+      </p>
+      <ol class="ac-steps">
+        <li>Computes the gradient of the predicted class score with respect to the final
+            convolutional feature maps.</li>
+        <li>Pools these gradients globally to get <em>channel importance weights</em>.</li>
+        <li>Produces a weighted combination of activation maps and applies ReLU,
+            resulting in a coarse localisation heatmap.</li>
+        <li>Overlays this heatmap on the original X-ray using a jet colormap —
+            red = high activation (where the model "looked"), blue = low.</li>
+      </ol>
+      <p>
+        This allows clinicians to <strong>verify</strong> the model's spatial reasoning
+        and build trust or flag errors — going far beyond a plain probability score.
+      </p>
+    </div>
+
+    <div class="about-card">
+      <div class="ac-num">05</div>
+      <h2>Tech Stack</h2>
+      <div class="ac-tags">
+        <span>PyTorch</span><span>DenseNet-121</span><span>OpenCV</span>
+        <span>Flask</span><span>Vanilla JS</span><span>Pillow</span>
+        <span>scikit-learn</span><span>pandas</span>
+      </div>
+    </div>
+
+    <div class="about-card">
+      <div class="ac-num">06</div>
+      <h2>Ethical Considerations</h2>
+      <p>
+        AI in radiology carries real responsibility. This system is designed strictly
+        for <strong>educational and research</strong> purposes, and all predictions
+        should be reviewed by a qualified medical professional before any clinical
+        decision is made.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="about-ref">
+    <h3>References</h3>
+    <ul>
+      <li>Wang, X. et al. (2017). ChestX-ray8: Hospital-scale Chest X-ray Database and Benchmarks. <em>CVPR.</em></li>
+      <li>Rajpurkar, P. et al. (2017). CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning. <em>arXiv:1711.05225.</em></li>
+      <li>Selvaraju, R.R. et al. (2017). Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization. <em>ICCV.</em></li>
+    </ul>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="disclaimer">
+      ⚠️ <strong>Clinical Disclaimer:</strong> For educational and research use only. Not a substitute for medical advice.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

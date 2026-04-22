@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PneumoScan — AI Lung Diagnosis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <span class="logo-icon">⬡</span>
+    <span class="logo-text">PneumoScan</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="/" class="active">Diagnose</a></li>
+    <li><a href="/about">About</a></li>
+    <li><span class="nav-badge">Grad-CAM + LIME</span></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-content">
+    <div class="hero-pill">DenseNet-121 · NIH Chest X-Ray14 · Dual XAI</div>
+    <h1 class="hero-title">
+      Chest X-Ray<br>
+      <em>Diagnosis</em><br>
+      <span class="hero-accent">Explained.</span>
+    </h1>
+    <p class="hero-sub">
+      Upload a chest X-ray. Our model detects 14 lung pathologies and explains
+      <em>why</em> using both <strong>Grad-CAM</strong> (gradient heatmaps) and
+      <strong>LIME</strong> (superpixel attribution) — two independent XAI lenses.
+    </p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-n">14</span><span class="stat-l">Diseases</span></div>
+      <div class="stat"><span class="stat-n">2×</span><span class="stat-l">XAI Methods</span></div>
+      <div class="stat"><span class="stat-n">112K+</span><span class="stat-l">Training imgs</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="workspace" id="workspace">
+  <div class="workspace-inner">
+
+    <!-- Upload Panel -->
+    <div class="panel upload-panel" id="upload-panel">
+      <h2 class="panel-title">Upload X-Ray</h2>
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-inner">
+          <div class="dz-icon">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 6L24 34M24 6L14 16M24 6L34 16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 38H40" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="dz-title">Drop your X-ray here</p>
+          <p class="dz-sub">PNG, JPG, TIFF · max 16 MB</p>
+          <button class="btn-upload" id="browse-btn">Browse Files</button>
+        </div>
+        <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.tiff,.bmp,.webp" hidden>
+      </div>
+
+      <div class="preview-box hidden" id="preview-box">
+        <img id="preview-img" src="" alt="X-Ray preview">
+        <div class="preview-meta" id="preview-meta"></div>
+        <button class="btn-primary" id="analyze-btn">
+          <span class="btn-text">Analyse X-Ray</span>
+          <span class="btn-arrow">→</span>
+        </button>
+        <button class="btn-ghost" id="reset-btn">Choose another</button>
+      </div>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="panel results-panel hidden" id="results-panel">
+
+      <div class="loading-state" id="loading-state">
+        <div class="loader-ring"></div>
+        <p class="loader-text">Running inference<span class="dots"></span></p>
+        <p class="loader-sub">DenseNet-121 forward pass + Grad-CAM + LIME (500 perturbations)</p>
+        <p class="loader-note">LIME may take 15–30 s on CPU</p>
+      </div>
+
+      <div class="result-content hidden" id="result-content">
+        <div class="result-header">
+          <div class="result-verdict" id="result-verdict"></div>
+          <div class="result-meta" id="result-meta"></div>
+        </div>
+
+        <!-- Triple image view: Original | Grad-CAM | LIME -->
+        <div class="image-triple" id="image-triple">
+          <div class="img-card">
+            <span class="img-label">Original X-Ray</span>
+            <img id="orig-img" src="" alt="Original">
+          </div>
+          <div class="img-card">
+            <span class="img-label img-label--gradcam">Grad-CAM</span>
+            <img id="gradcam-img" src="" alt="Grad-CAM">
+          </div>
+          <div class="img-card">
+            <span class="img-label img-label--lime">LIME</span>
+            <img id="lime-img" src="" alt="LIME">
+          </div>
+        </div>
+
+        <!-- XAI method tabs -->
+        <div class="xai-tabs">
+          <button class="xai-tab active" data-tab="combined">Combined</button>
+          <button class="xai-tab" data-tab="gradcam">Grad-CAM</button>
+          <button class="xai-tab" data-tab="lime">LIME</button>
+        </div>
+
+        <div class="xai-box">
+          <div class="xai-tab-content active" id="tab-combined">
+            <div class="xai-header">
+              <span class="xai-badge">Dual XAI</span>
+              <h3>Why did the model predict this?</h3>
+            </div>
+            <p class="xai-text" id="xai-combined-text"></p>
+          </div>
+
+          <div class="xai-tab-content" id="tab-gradcam">
+            <div class="xai-header">
+              <span class="xai-badge xai-badge--gc">Grad-CAM</span>
+              <h3>Gradient-weighted Class Activation Map</h3>
+            </div>
+            <p class="xai-text">
+              Grad-CAM backpropagates the predicted class score through the final DenseNet-121
+              convolutional block (<code>denseblock4.denselayer16.conv2</code>).
+              Gradients are globally average-pooled to get channel weights, then combined
+              with the activation maps and passed through ReLU.
+            </p>
+            <div class="heatmap-legend">
+              <span class="legend-label">Low activation</span>
+              <div class="legend-bar"></div>
+              <span class="legend-label">High activation</span>
+            </div>
+          </div>
+
+          <div class="xai-tab-content" id="tab-lime">
+            <div class="xai-header">
+              <span class="xai-badge xai-badge--lime">LIME</span>
+              <h3>Local Interpretable Model-agnostic Explanations</h3>
+            </div>
+            <p class="xai-text" id="xai-lime-text"></p>
+            <div class="lime-legend">
+              <div class="lime-legend-item">
+                <span class="lime-dot lime-dot--pos"></span>
+                <span>Positive contribution (supports prediction)</span>
+              </div>
+              <div class="lime-legend-item">
+                <span class="lime-dot lime-dot--neg"></span>
+                <span>Negative contribution (opposes prediction)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Probability bars -->
+        <div class="prob-section">
+          <h3 class="prob-title">Detected Conditions</h3>
+          <div class="prob-list" id="prob-list"></div>
+        </div>
+
+        <!-- Disease info -->
+        <div class="disease-card" id="disease-card"></div>
+
+        <div class="action-row">
+          <button class="btn-primary" id="new-scan-btn">New Scan</button>
+          <button class="btn-ghost" id="download-btn">Download Report</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="xai-compare-section">
+  <div class="xai-compare-inner">
+    <h2 class="section-title">Two XAI Methods, One Prediction</h2>
+    <div class="xai-method-cards">
+      <div class="xm-card">
+        <div class="xm-icon xm-icon--gc">∇</div>
+        <h3>Grad-CAM</h3>
+        <p>Gradient-based. Produces a <em>continuous heatmap</em> showing which pixel regions activated most strongly for the predicted class. Fast, faithful to the model's internals.</p>
+        <div class="xm-tags"><span>Gradient-based</span><span>Pixel-level</span><span>Model-specific</span></div>
+      </div>
+      <div class="xm-card">
+        <div class="xm-icon xm-icon--lime">◈</div>
+        <h3>LIME</h3>
+        <p>Perturbation-based. Divides the X-ray into <em>superpixel segments</em> and tests which ones, when masked, change the prediction most. Model-agnostic.</p>
+        <div class="xm-tags"><span>Perturbation-based</span><span>Superpixels</span><span>Model-agnostic</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="diseases-section">
+  <h2 class="section-title">Detectable Pathologies</h2>
+  <div class="disease-grid">
+    <div class="dg-card">Atelectasis</div><div class="dg-card">Cardiomegaly</div>
+    <div class="dg-card">Effusion</div><div class="dg-card">Infiltration</div>
+    <div class="dg-card">Mass</div><div class="dg-card">Nodule</div>
+    <div class="dg-card">Pneumonia</div><div class="dg-card">Pneumothorax</div>
+    <div class="dg-card">Consolidation</div><div class="dg-card">Edema</div>
+    <div class="dg-card">Emphysema</div><div class="dg-card">Fibrosis</div>
+    <div class="dg-card">Pleural Thickening</div><div class="dg-card">Hernia</div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="disclaimer">
+      ⚠️ <strong>Clinical Disclaimer:</strong> For educational and research purposes only.
+      Not a substitute for professional medical advice.
+    </p>
+    <p class="footer-credits">DenseNet-121 · NIH Chest X-Ray14 · Grad-CAM · LIME</p>
+  </div>
+</footer>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
